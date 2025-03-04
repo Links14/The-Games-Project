@@ -3,17 +3,19 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 2
-  tags: []
+  tags:
+  - Background
+  - Collisions
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Player
   - Water
   - UI
-  - 
-  - 
-  - 
+  - Background
+  - Collisions
+  - Interactable
   - 
   - 
   - 
@@ -40,4 +42,16 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Background
+    uniqueID: 1307746353
+    locked: 0
+  - name: Collisions
+    uniqueID: 3812414769
+    locked: 0
+  - name: Player Layer
+    uniqueID: 268736671
+    locked: 0
+  - name: Foreground
+    uniqueID: 2589725553
     locked: 0
