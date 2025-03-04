@@ -10,6 +10,7 @@ using UnityEngine.UIElements;
 public class PlayerController : MonoBehaviour
 {
     [SerializeField] GameObject MovePoint;
+    [SerializeField] GameObject InteractPoint;
     [SerializeField] Rigidbody2D rb;
     [SerializeField] float moveSpeed = 5f;
     [SerializeField] PlayerInputActions PlayerControls;
@@ -17,9 +18,6 @@ public class PlayerController : MonoBehaviour
     private InputAction move;
     private InputAction interact;
     private bool interactDown = false;
-    private Vector3 moveDirection;
-    private Vector3 roundedPos;
-    private Vector3 facingDir;
     private bool isMoving = false;
 
 
@@ -50,7 +48,7 @@ public class PlayerController : MonoBehaviour
         if (interact.ReadValue<float>() > 0.5f && !interactDown)
         {
             interactDown = true;
-            Debug.Log($"Interact\t\t {MovePoint.transform.position + facingDir}");
+            Debug.Log($"Interact\t\t {rb.transform.position + InteractPoint.transform.localPosition}");
             StartCoroutine(Interact());
         } else if (interactDown && interact.ReadValue<float>() < 0.1f)
         {
@@ -58,16 +56,13 @@ public class PlayerController : MonoBehaviour
         }
 
         // Facing Direction
-        if (Mathf.Abs(Mathf.Round(MovePoint.transform.position.x)) > 0.1f)
-            facingDir = new Vector3(Mathf.Abs(Mathf.Round(MovePoint.transform.position.x)), 0f, 0f);
+        if (Mathf.Abs(Mathf.Round(move.ReadValue<Vector2>().x)) > 0.1f)
+            InteractPoint.transform.localPosition = new Vector3(Mathf.Round(move.ReadValue<Vector2>().x), 0f, 0f);   // set x
 
-        else if (Mathf.Abs(Mathf.Round(MovePoint.transform.position.y)) > 0.1f)
-            facingDir = new Vector3(0f, Mathf.Abs(Mathf.Round(MovePoint.transform.position.y)), 0f);
+        else if (Mathf.Abs(Mathf.Round(move.ReadValue<Vector2>().y)) > 0.1f)
+            InteractPoint.transform.localPosition = new Vector3(0f, Mathf.Round(move.ReadValue<Vector2>().y), 0f);   // set y
 
         // Player Movement
-        moveDirection = new Vector3(Mathf.Round(move.ReadValue<Vector2>().x), Mathf.Round(move.ReadValue<Vector2>().y), 0f);
-        roundedPos = new Vector3(Mathf.Round(rb.transform.position.x), Mathf.Round(rb.transform.position.y), 0f);
-
         rb.transform.position = Vector2.MoveTowards(rb.transform.position, MovePoint.transform.position, moveSpeed * Time.fixedDeltaTime);
 
 
@@ -75,12 +70,12 @@ public class PlayerController : MonoBehaviour
         {
             isMoving = true;
 
-            Vector3 newX = new Vector3(Mathf.Round(MovePoint.transform.position.x + moveDirection.x), Mathf.Round(MovePoint.transform.position.y), 0f);
-            Vector3 newY = new Vector3(Mathf.Round(MovePoint.transform.position.x), Mathf.Round(MovePoint.transform.position.y + moveDirection.y), 0f);
+            Vector3 newX = new Vector3(Mathf.Round(MovePoint.transform.position.x + Mathf.Round(move.ReadValue<Vector2>().x)), Mathf.Round(MovePoint.transform.position.y), 0f);
+            Vector3 newY = new Vector3(Mathf.Round(MovePoint.transform.position.x), Mathf.Round(MovePoint.transform.position.y + Mathf.Round(move.ReadValue<Vector2>().y)), 0f);
 
-            if (Mathf.Abs(moveDirection.x) > 0.1f && IsTraversable(newX))
+            if (Mathf.Abs(Mathf.Round(move.ReadValue<Vector2>().x)) > 0.1f && IsTraversable(newX))
                 MovePoint.transform.position = newX;
-            else if (Mathf.Abs(moveDirection.y) > 0.1f && IsTraversable(newY))
+            else if (Mathf.Abs(Mathf.Round(move.ReadValue<Vector2>().y)) > 0.1f && IsTraversable(newY))
                 MovePoint.transform.position = newY;
         }
         else if (Vector3.Distance(rb.transform.position, MovePoint.transform.position) < 0.05f)
@@ -96,7 +91,7 @@ public class PlayerController : MonoBehaviour
 
         foreach (int layer in layers)
         {
-            Debug.Log($"Layer Detected: {LayerMask.LayerToName(layer)} ({layer})");
+            // Debug.Log($"Layer Detected: {LayerMask.LayerToName(layer)} ({layer})");
             if (LayerMask.LayerToName(layer) == "Collisions" || LayerMask.LayerToName(layer) == "Interactable")
                 return false;
         }
@@ -106,7 +101,7 @@ public class PlayerController : MonoBehaviour
 
     private IEnumerator Interact()
     {
-        Collider2D[] colliders = Physics2D.OverlapPointAll(MovePoint.transform.position + facingDir);
+        Collider2D[] colliders = Physics2D.OverlapPointAll(MovePoint.transform.position + InteractPoint.transform.localPosition);
         var index = -1;
         for (int i = 0; i < colliders.Length; i++)
         {
