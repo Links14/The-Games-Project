@@ -16,8 +16,10 @@ public class PlayerController : MonoBehaviour
 
     private InputAction move;
     private InputAction interact;
+    private bool interactDown = false;
     private Vector3 moveDirection;
     private Vector3 roundedPos;
+    private Vector3 facingDir;
     private bool isMoving = false;
 
 
@@ -38,19 +40,29 @@ public class PlayerController : MonoBehaviour
     } 
     private void OnDisable()
     {
-        move.Disable();
-        interact.Disable();
+        if (move != null) move.Disable();
+        if (interact != null) interact.Disable();
     }
 
     private void FixedUpdate()
     {
         // Player Interact
-        if (interact.ReadValue<bool>())
+        if (interact.ReadValue<float>() > 0.5f && !interactDown)
         {
-            Debug.Log("Interact");
+            interactDown = true;
+            Debug.Log($"Interact\t\t {MovePoint.transform.position + facingDir}");
             StartCoroutine(Interact());
+        } else if (interactDown && interact.ReadValue<float>() < 0.1f)
+        {
+            interactDown = false;
         }
 
+        // Facing Direction
+        if (Mathf.Abs(Mathf.Round(MovePoint.transform.position.x)) > 0.1f)
+            facingDir = new Vector3(Mathf.Abs(Mathf.Round(MovePoint.transform.position.x)), 0f, 0f);
+
+        else if (Mathf.Abs(Mathf.Round(MovePoint.transform.position.y)) > 0.1f)
+            facingDir = new Vector3(0f, Mathf.Abs(Mathf.Round(MovePoint.transform.position.y)), 0f);
 
         // Player Movement
         moveDirection = new Vector3(Mathf.Round(move.ReadValue<Vector2>().x), Mathf.Round(move.ReadValue<Vector2>().y), 0f);
@@ -66,9 +78,9 @@ public class PlayerController : MonoBehaviour
             Vector3 newX = new Vector3(Mathf.Round(MovePoint.transform.position.x + moveDirection.x), Mathf.Round(MovePoint.transform.position.y), 0f);
             Vector3 newY = new Vector3(Mathf.Round(MovePoint.transform.position.x), Mathf.Round(MovePoint.transform.position.y + moveDirection.y), 0f);
 
-            if (Mathf.Abs(moveDirection.x) > 0.5f && IsTraversable(newX))
+            if (Mathf.Abs(moveDirection.x) > 0.1f && IsTraversable(newX))
                 MovePoint.transform.position = newX;
-            else if (Mathf.Abs(moveDirection.y) > 0.5f && IsTraversable(newY))
+            else if (Mathf.Abs(moveDirection.y) > 0.1f && IsTraversable(newY))
                 MovePoint.transform.position = newY;
         }
         else if (Vector3.Distance(rb.transform.position, MovePoint.transform.position) < 0.05f)
@@ -85,7 +97,7 @@ public class PlayerController : MonoBehaviour
         foreach (int layer in layers)
         {
             Debug.Log($"Layer Detected: {LayerMask.LayerToName(layer)} ({layer})");
-            if (LayerMask.LayerToName(layer) == "Collisions")
+            if (LayerMask.LayerToName(layer) == "Collisions" || LayerMask.LayerToName(layer) == "Interactable")
                 return false;
         }
 
@@ -94,29 +106,23 @@ public class PlayerController : MonoBehaviour
 
     private IEnumerator Interact()
     {
-        //var facingDir = new Vector3(animator.GetFloat("moveX"), animator.GetFloat("moveY"), 0f);
-        //colliderPoint.position = movePoint.position + facingDir;
-
-        //var collider = Physics2D.OverlapCircle(colliderPoint.position, 0.2f, questLayer | interactables);
-        //if (collider != null)
-        //{
-        //    animator.SetBool("isMoving", false);
-        //    new WaitForEndOfFrame();
-        //    collider.GetComponent<Interactable>()?.Interact(-1f * facingDir);
-        //}
-        //else
-        //{
-        //    // uses waterLayers - 
-        //    // waterLayerBeach | waterLayerLake | waterLayerOcean | waterLayerRiver
-        //    var c = Physics2D.OverlapCircle(colliderPoint.position, 0.2f, waterLayerBeach | waterLayerLake | waterLayerOcean | waterLayerRiver);
-
-        //    if (c != null)
-        //    {
-        //        animator.SetBool("isMoving", false);
-        //        new WaitForEndOfFrame();
-        //        StartCoroutine(FishingManager.Instance.StartFishing(c.gameObject.tag));
-        //    }
-        //}
+        Collider2D[] colliders = Physics2D.OverlapPointAll(MovePoint.transform.position + facingDir);
+        var index = -1;
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Debug.Log("Checking Interact identification");
+            if (LayerMask.LayerToName(colliders[i].gameObject.layer) == "Interactable")
+            {
+                index = i;
+                break;
+            }
+        }
+        
+        if (index != -1)
+        {
+            Debug.Log("Successful Interact identification");
+            colliders[index].GetComponent<Interactable>()?.Interact();
+        }
 
         yield return null;
     }
