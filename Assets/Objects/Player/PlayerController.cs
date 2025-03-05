@@ -17,6 +17,7 @@ public class PlayerController : MonoBehaviour
 
     private InputAction move;
     private InputAction interact;
+    private InputAction mouseInteract;
     private bool interactDown = false;
     private bool isMoving = false;
 
@@ -33,24 +34,35 @@ public class PlayerController : MonoBehaviour
 
         move = PlayerControls.Player.Move;
         interact = PlayerControls.Player.Interact;
+        mouseInteract = PlayerControls.Player.MouseInteract;
         move.Enable();
         interact.Enable();
+        mouseInteract.Enable();
     } 
     private void OnDisable()
     {
         if (move != null) move.Disable();
         if (interact != null) interact.Disable();
+        if (mouseInteract != null) mouseInteract.Disable();
     }
 
     private void FixedUpdate()
     {
         // Player Interact
-        if (interact.ReadValue<float>() > 0.5f && !interactDown)
+        if (!interactDown)
         {
-            interactDown = true;
-            Debug.Log($"Interact\t\t {rb.transform.position + InteractPoint.transform.localPosition}");
-            StartCoroutine(Interact());
-        } else if (interactDown && interact.ReadValue<float>() < 0.1f)
+            if (interact.ReadValue<float>() > 0.5f)
+            {
+                interactDown = true;
+                StartCoroutine(Interact(false));
+            } 
+            else if (mouseInteract.ReadValue<float>() > 0.5f)
+            {
+                interactDown = true;
+                StartCoroutine(Interact(true));
+            }
+
+        } else if (interactDown && interact.ReadValue<float>() < 0.1f && mouseInteract.ReadValue<float>() < 0.1f)
         {
             interactDown = false;
         }
@@ -99,13 +111,26 @@ public class PlayerController : MonoBehaviour
         return true;
     }
 
-    private IEnumerator Interact()
+    private IEnumerator Interact(bool _mouse)
     {
-        Collider2D[] colliders = Physics2D.OverlapPointAll(MovePoint.transform.position + InteractPoint.transform.localPosition);
+
+        Collider2D[] colliders;
+
+        if (_mouse)
+        {
+            Vector3 mousePosition = Input.mousePosition;
+            mousePosition.z = 10f;
+            colliders = Physics2D.OverlapPointAll(Camera.main.ScreenToWorldPoint(Input.mousePosition));
+        }
+        else
+        {
+            colliders = Physics2D.OverlapPointAll(MovePoint.transform.position + InteractPoint.transform.localPosition);
+        }
+
         var index = -1;
         for (int i = 0; i < colliders.Length; i++)
         {
-            Debug.Log("Checking Interact identification");
+            // Debug.Log("Checking Interact identification");
             if (LayerMask.LayerToName(colliders[i].gameObject.layer) == "Interactable")
             {
                 index = i;
@@ -115,7 +140,7 @@ public class PlayerController : MonoBehaviour
         
         if (index != -1)
         {
-            Debug.Log("Successful Interact identification");
+            // Debug.Log("Successful Interact identification");
             colliders[index].GetComponent<Interactable>()?.Interact();
         }
 

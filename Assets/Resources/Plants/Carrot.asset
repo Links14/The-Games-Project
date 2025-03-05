@@ -19,10 +19,8 @@ MonoBehaviour:
     warmth to potions. Some alchemists believe it enhances vision-related brews,
     while others use it as a balancing ingredient in complex mixtures.
   growthRates:
-  - 0
   - 2
   - 1
-  - 0
   sprites:
   - {fileID: -1023583415, guid: 076a194ce15fbcc4b9ec2320b55d223b, type: 3}
   - {fileID: 634213518, guid: 076a194ce15fbcc4b9ec2320b55d223b, type: 3}

@@ -7,13 +7,13 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "New Plant", menuName = "Farming/Plants")]
 public class PlantSO : SO
 {
-    // (1 is dead plant), (2 is sapling), (3 is young plant), (4 is mature plant)
+    // (0 is dead plant), (1 is sapling), (2 is young plant), (3 is mature plant)
     [SerializeField]
     [TextArea]
     string description;
     [Space]
-    // length of these two should be the same
-    [SerializeField] private float[] growthRates = { 0f, 1f, 1f, 0f };  // first and last index should be 0f
+    // growth rates is 2 shorter than sprites
+    [SerializeField] private float[] growthRates = {1f, 1f};
     [SerializeField] private Sprite[] sprites = new Sprite[4];          // index 0 should be dead plant
 
     public float[] GrowthRates { get { return growthRates; } }

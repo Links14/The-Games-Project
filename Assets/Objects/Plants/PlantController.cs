@@ -3,46 +3,64 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 
-public class PlantController : MonoBehaviour, Interactable
+public class PlantController : MonoBehaviour, Interactable, IData
 {
-    // (0 is nothing), (1 is dead plant), (2 is sapling), (3 is young plant), (4 is mature plant)
+    // (-1 is nothing), (0 is dead plant), (1 is sapling), (2 is young plant), (3 is mature plant)
     [SerializeField] PlantSO plant;
     [SerializeField] private Sprite[] soils = new Sprite[2]; // 0 is under 50% water, 1 is over 50% water
-    [SerializeField] private Sprite activeSoil;
     [SerializeField] private GameObject plantSprite;
+    [SerializeField] private GameObject soilSprite;
     [SerializeField] private float interval = 5f;
     [SerializeField] private float growth = 0f;
     [SerializeField] private float water = 60f;
-    [SerializeField] private int stage = 0;
+    [SerializeField] private int stage = -1;
 
     private void Start()
     {
         if (plant != null)
         {
             StartGrowth();
-            stage = 2;
-            plantSprite.GetComponent<SpriteRenderer>().sprite = plant.Sprites[stage - 1];
+            stage = 1;
+            plantSprite.GetComponent<SpriteRenderer>().sprite = plant.Sprites[stage];
+            soilSprite.GetComponent<SpriteRenderer>().sprite = soils[1];
         }
     }
 
     private void CheckGrowth()
     {
-        growth += plant.GrowthRates[stage - 1];
         water -= 0.5f;
         Debug.Log($"Growth: {growth}\tWater: {water}");
 
-        if (stage > 1)
+        if (plant != null)
         {
-            if (growth >= 20) { 
-                PlantInit(stage + 1);
+            if (stage != 0)
+                stage = Mathf.Min((int)(growth / 20f) + 1, plant.Sprites.Length - 1);
+
+            if (stage == -1)
+            {
+                plant = null;
+                plantSprite.GetComponent<SpriteRenderer>().sprite = null; // remove plant sprite
+            }
+            else
+            {
+                plantSprite.GetComponent<SpriteRenderer>().sprite = plant.Sprites[stage];
+                if (stage > 0 && stage < (plant.Sprites.Length - 1))
+                {
+                    if (growth < 20f * (plant.Sprites.Length - 1))
+                        growth += plant.GrowthRates[stage - 1];
+                    else
+                        growth = 20f * (plant.Sprites.Length - 1);
+                }
             }
         }
+
         if (water <= 0)
-            PlantInit(1, 0f); // kill plant
-        else if (water > 50) 
-            activeSoil = soils[1];
-        else 
-            activeSoil = soils[0];
+            if (stage > 0)
+                PlantInit(0, 0f); // kill plant
+        else if (water > 50)
+            soilSprite.GetComponent<SpriteRenderer>().sprite = soils[1];
+        else
+            soilSprite.GetComponent<SpriteRenderer>().sprite = soils[0];
     }
 
     private void PlantInit(int _stage)
@@ -57,31 +75,34 @@ public class PlantController : MonoBehaviour, Interactable
 
     private void PlantInit(int _stage, float _water, PlantSO _plant)
     {
-        StopGrowth();
+        PlantInit(_stage, _water, _plant, growth);
+    }
+
+    private void PlantInit(int _stage, float _water, PlantSO _plant, float _growth)
+    {
+        // StopGrowth();
         stage = _stage;
-        growth = 0f;
+        growth = _growth;
         water = _water;
         plant = _plant;
 
-        switch (_stage)
-        {
-            case 0:
-                plant = null;
-                plantSprite = null; // remove plant sprite
-                if (water > 50) activeSoil = soils[1];
-                else activeSoil = soils[0];
+        if (water > 50)
+            soilSprite.GetComponent<SpriteRenderer>().sprite = soils[1];
+        else
+            soilSprite.GetComponent<SpriteRenderer>().sprite = soils[0];
 
-                break;
-            case 1:
-                plantSprite.GetComponent<SpriteRenderer>().sprite = plant.Sprites[0]; // set sprite to dead plant
-                break;
-            case int n when (n < plant.Sprites.Length):
-                StartGrowth();
-                plantSprite.GetComponent<SpriteRenderer>().sprite = plant.Sprites[stage - 1];
-                break;
-            case int n when (n == plant.Sprites.Length):
-                plantSprite.GetComponent<SpriteRenderer>().sprite = plant.Sprites[stage - 1];
-                break;
+        if (stage == -1)
+        {
+            plant = null;
+            plantSprite.GetComponent<SpriteRenderer>().sprite = null; // remove plant sprite
+        }
+        else
+        {
+            plantSprite.GetComponent<SpriteRenderer>().sprite = plant.Sprites[stage];
+            if (stage > 0 && stage < plant.Sprites.Length - 1)
+            {
+                // StartGrowth();
+            }
         }
     }
 
@@ -102,21 +123,21 @@ public class PlantController : MonoBehaviour, Interactable
             default:
                 Debug.Log("Oops! Something seems to have gone wrong...");
                 break;
-            case 0:
+            case -1:
                 // prompt the player to plant one of the available seed options
                 Debug.Log("Plant a Seed!");
                 break;
-            case 1:
+            case 0:
                 // clears dead plant
                 Debug.Log("Cleared Dead Plant");
                 break;
-            case int n when (n < plant.Sprites.Length):
+            case int n when (n < plant.Sprites.Length - 1):
                 Debug.Log("This plant still needs to grow!");
                 break;
-            case int n when (n == plant.Sprites.Length):
+            case int n when (n == plant.Sprites.Length - 1):
                 // Harvest plant, add to inventory
                 Debug.Log("Harvested Plant!");
-                PlantInit(0, water); // reset the plot
+                PlantInit(-1, water, null, 0f); // reset the plot
                 break;
         }
 
@@ -126,5 +147,37 @@ public class PlantController : MonoBehaviour, Interactable
             water = 100f;
         else
             water += 20f;
+    }
+
+    public void LoadData(SaveData _data)
+    {
+        try {
+            var pos = _data.plantPos[0];
+            this.transform.position = pos.ToVector3();
+            _data.plantPos.Remove(pos);
+
+            var a = _data.plantStage[0];
+            var b = _data.plantWater[0];
+            var c = _data.plantID[0];
+            var d = _data.plantGrowth[0];
+
+            PlantInit(a, b, SaveMB.Instance.GetPlantByID(c), d);
+            _data.plantStage.Remove(a);
+            _data.plantWater.Remove(b);
+            _data.plantID.Remove(c);
+            _data.plantGrowth.Remove(d); 
+        }
+        catch
+        {
+            Debug.LogWarning("Caught error loading data in PlantController Object. " + this.gameObject);
+        }
+    }
+
+    public void SaveData(ref SaveData _data)
+    {
+        _data.plantStage.Add(stage);
+        _data.plantWater.Add(water);
+        _data.plantID.Add(plant.ObjectID);
+        _data.plantGrowth.Add(growth);
     }
 }
